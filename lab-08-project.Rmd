@@ -1,0 +1,215 @@
+---
+title: "Effect of Marine Cloud Brightening on Earth's Climate"
+author: "Maya Maciel-Seidman"
+date: "Due April 12th 2024"
+output:
+  pdf_document:
+    toc: true
+    include:
+      in_header: ees3310.sty
+  github_document:
+    toc: true
+  html_document:
+    toc: true
+  word_document:
+    toc: true
+bibliography: "lab-08.bib"
+fontsize: 12pt
+subtitle: Independent Project Report
+---
+
+---
+```{r setup, include=FALSE}
+knitr::knit_hooks$set(inline = function(x) { knitr:::format_sci(x, 'md')})
+knitr::opts_chunk$set(echo = TRUE, include = TRUE, cache = FALSE)
+
+if (knitr::is_latex_output()) {
+  message("Setting PDF plot hook.")
+  new_plot_hook <- function(x, options)
+    paste("\n", knitr::hook_plot_tex(x, options), "\n")
+
+  knitr::knit_hooks$set(plot = new_plot_hook)
+  knitr::opts_chunk$set(fig.width = 5, fig.height = 5)
+} else {
+  message("Not using PDF output.")
+}
+
+
+options(dplyr.summarise.inform = FALSE)
+
+# This section loads necessary R libraries and sources scripts that define
+# useful functions format_md.
+#
+data_dir = "_data"
+script_dir = "_scripts"
+
+if (!dir.exists(data_dir)) dir.create(data_dir)
+
+library(tidyverse)
+library(scales)
+library(knitr)
+library(lubridate)
+
+theme_set(theme_bw(base_size = 15))
+
+source(file.path(script_dir, "utils.R"), chdir = T)
+source(file.path(script_dir, "format_md.R"), chdir = T)
+source(file.path(script_dir, "modtran.R"), chdir = T)
+source(file.path(script_dir, "rrtm.R"), chdir = T)
+source(file.path(script_dir, "geocarb.R"), chdir = T)
+```
+
+# Introduction
+
+As global warming continues to increase, some geoengineering techniques present possible attempts to mitigate warming. One such technique is marine cloud brightening. Marine cloud brightening aims to decrease global warming by increasing Earth's albedo through the process of injecting naturally occurring sea salt into clouds (David Keith's Research Group, n.d.). Marine cloud brightening increases aerosols in the form of sea spray and decreases cloud droplet radius by increasing the number of droplets in these clouds (Zhao et al., 2021). Though this seems promising, geoengineering techniques must be modeled to understand their effects before they are implemented with real world implications.
+
+Using the RRTM model, the effects of marine cloud brightening on Earth's climate can be simulated and analyzed. This project will use RRTM inputs to simulate marine cloud brightening and analyze outputs to answer the question: 
+How does marine cloud brightening affect the net solar radiation absorbed by Earth?
+
+# Methods
+
+This project uses the RRTM climate model, which stands for Rapid Radiative Transfer Model. RRTM is a radiative-convective model which utilizes code from the radiative-transfer part of the Community Climate System Model that was developed at the National Center for Atmospheric Research in Boulder, Colorado. The RRTM model can be run online at <https://climatemodels.uchicago.edu/rrtm/>.
+
+First, the default RRTM model was run as a control to understand Earth's climate without marine cloud brightening.
+```{r}
+# Run default RRTM model:
+default_rrtm = run_rrtm()
+```
+
+Next, the RRTM model was run with changes to its default inputs to simulate marine cloud brightening. The `aerosols` input was set to `ocean` since marine cloud brightening uses naturally occurring sea spray aerosols. The `low_cloud_frac` was set to 0.1 to represent 10% of the sky covered by low clouds. This is because marine cloud brightening could only be implemented in a small fraction of the sky, which is estimated to cover about 10% of Earth's surface (David Keith's Research Group, n.d.). Finally, the `cloud_drop_radius` was decreased from the default of `10` since the more aerosols injected by marine cloud brightening, the smaller the cloud droplet radius will be. The RRTM model was run 16 times, decreasing the `cloud_drop_radius` by 0.5 micrometers with each next run. The smallest `cloud_drop_radius` was 2.5 micrometers, since this is the minimum radius supported by the RRTM model.
+```{r}
+# Run RRTM marine cloud brightening model with decreasing cloud_drop_radius:
+mcb_rrtm_10 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=10)
+mcb_rrtm_9.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=9.5)
+mcb_rrtm_9 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=9)
+mcb_rrtm_8.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=8.5)
+mcb_rrtm_8 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=8)
+mcb_rrtm_7.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=7.5)
+mcb_rrtm_7 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=7)
+mcb_rrtm_6.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=6.5)
+mcb_rrtm_6 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=6)
+mcb_rrtm_5.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=5.5)
+mcb_rrtm_5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=5)
+mcb_rrtm_4.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=4.5)
+mcb_rrtm_4 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=4)
+mcb_rrtm_3.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=3.5)
+mcb_rrtm_3 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=3)
+mcb_rrtm_2.5 = run_rrtm(aerosols="ocean", low_cloud_frac=0.1, cloud_drop_radius=2.5)
+```
+
+Then, the `i_in` (the net solar radiation absorbed by Earth) output for each model run was obtained. Vectors were created for the cloud droplet radius of each model run and the resulting `i_in` outputs. These vectors were combined into a data frame where each row represented a model run with its cloud droplet radius and `i_in` output. Creating a data frame makes it easier to analyze the data for the effect of the amount of marine cloud brightening aerosols on the net solar radiation absorbed by Earth. The `i_in` output from the default (no marine cloud brightening) model run was not included in this data frame because it has the same droplet radius as the first marine cloud brightening model run and keeping it separate from the marine cloud brightening data allows for comparison between the marine cloud brightening data and the default data. However, a separate data frame for the default model was also created.
+```{r}
+# Obtain i_in output for all of the model runs:
+i_in_default = default_rrtm$i_in
+i_in_10 = mcb_rrtm_10$i_in
+i_in_9.5 = mcb_rrtm_9.5$i_in
+i_in_9 = mcb_rrtm_9$i_in
+i_in_8.5 = mcb_rrtm_8.5$i_in
+i_in_8 = mcb_rrtm_8$i_in
+i_in_7.5 = mcb_rrtm_7.5$i_in
+i_in_7 = mcb_rrtm_7$i_in
+i_in_6.5 = mcb_rrtm_6.5$i_in
+i_in_6 = mcb_rrtm_6$i_in
+i_in_5.5 = mcb_rrtm_5.5$i_in
+i_in_5 = mcb_rrtm_5$i_in
+i_in_4.5 = mcb_rrtm_4.5$i_in
+i_in_4 = mcb_rrtm_4$i_in
+i_in_3.5 = mcb_rrtm_3.5$i_in
+i_in_3 = mcb_rrtm_3$i_in
+i_in_2.5 = mcb_rrtm_2.5$i_in
+
+# Create vector for the MCB model cloud_drop_radius values:
+droplet_radius = c(10,9.5,9,8.5,8,7.5,7,6.5,6,5.5,5,4.5,4,3.5,3,2.5)
+# Create vector for i_in values:
+i_in = c(i_in_10, i_in_9.5, i_in_9, i_in_8.5, i_in_8, i_in_7.5, i_in_7, i_in_6.5, i_in_6, i_in_5.5, i_in_5, i_in_4.5, i_in_4, i_in_3.5, i_in_3, i_in_2.5)
+
+# Create data frame for MCB cloud droplet radii and i_in values:
+i_in_data = data.frame(droplet_radius, i_in)
+
+# Create data frame for the default RRTM model:
+default_data = data.frame("Default Model", i_in_default)
+# Clean up column names:
+colnames(default_data) <- c("Model", "i_in")
+```
+
+Descriptive statistics were calculated to analyze the `i_in` data from the MCB model runs. These statistics include the mean, median, minimum, maximum, range, and standard deviation. These statistics were then combined into a data frame, allowing them to be presented simply.
+```{r}
+# Obtain mean i_in from MCB model runs:
+mean_i_in = mean(i_in_data$i_in)
+
+# Obtain median i_in from MCB model runs:
+median_i_in = median(i_in_data$i_in)
+
+# Obtain minimum i_in from MCB model runs:
+min_i_in = min(i_in_data$i_in)
+
+# Obtain maximum i_in from MCB model runs:
+max_i_in = max(i_in_data$i_in)
+
+# Obtain i_in range from MCB model runs:
+range_i_in = max_i_in - min_i_in
+
+# Obtain i_in standard deviation from MCB model runs:
+st_dev_i_in = sd(i_in_data$i_in)
+st_dev_i_in = round(st_dev_i_in, digits=2)
+
+# Create vector for descriptive stats:
+descriptive_stat = c("Mean", "Median", "Minimum", "Maximum", "Range", "Standard Deviation")
+# Create vector for descriptive stats results:
+stat_value = c(mean_i_in, median_i_in, min_i_in, max_i_in, range_i_in, st_dev_i_in)
+
+# Create data frame for descriptive stats:
+stat_data = data.frame(descriptive_stat, stat_value)
+```
+
+
+# Results
+
+A table was created for the default RRTM model, which presents the `i_in` from the default RRTM model.
+```{r}
+# Create table for default RRTM model data:
+kable(default_data, caption="Net solar radiation absorbed by Earth (W/m^2) output from default RRTM model.")
+```
+Looking at this table, the net solar radiation absorbed by Earth for the default RRMT model, which represents no marine cloud brightening, is $244.8 W/m^2$.
+
+Another table was created for the marine cloud brightening model runs. It is organized based on the cloud droplet radius size, which represents the extent of marine cloud brightening (smaller cloud droplet radius sizes represent higher amounts of marine cloud brightening aerosols). For each cloud droplet radius size, the resulting `i_in` is presented in the table.
+```{r}
+# Create table for MCB model data:
+kable(i_in_data, caption="Net solar radiation absorbed by Earth (W/m^2) outputs from marine cloud brightening RRTM models. ")
+```
+This table conveys an overall trend of `i_in` decreasing as `droplet_radius` decreases.
+
+A table was created for the descriptive statistics that were calculated for the `i_in` results from the MCB model runs.
+```{r}
+# Create table for descriptive statistics:
+kable(stat_data, caption="Descriptive statistics for the net solar radiation absorbed by Earth (W/m^2) of the marine cloud brightening RRTM models.")
+```
+
+
+A scatter plot was created for `i_in` outputs from the marine cloud brightening model runs. A line of best fit was added to the graph to determine the overall trend of the data.
+```{r}
+# Create scatter plot for MCB i_in data:
+ggplot(aes(x=droplet_radius, y=i_in), data=i_in_data) + geom_point() + geom_smooth() + labs(title="Effect of MCB Droplet Radius Size on I_in", x="Cloud Droplet Radius (micrometers)", y="Net Solar Radiaion Absorbed by Earth (W/m^2)") + theme(plot.title=element_text(size=12)) + theme_minimal()
+```
+
+Figure 1: Scatter plot of marine cloud brightening models depicting the relationship between cloud droplet radius (micrometers) and net solar radiation absorbed by Earth (W/m^2).
+
+Based on the graph, the data follows a logarithmic trend. As cloud droplet radius increases, the net solar radiation absorbed by Earth increases until the growth starts to level off around 7 to 10 micrometers.
+
+
+# Conclusions
+
+From the results of the data and analysis, we can draw the conclusion that the net solar radiation absorbed by Earth is less when marine cloud brightening is simulated than the default RRTM model. This means that Earth's climate is cooler with marine cloud brightening than without marine cloud brightening. Additionally, as cloud droplet radius increases, the net solar radiation absorbed by Earth increases until it levels off at a cloud droplet radius of about 7 micrometers. Since cloud droplet radius is a proxy for the extent of marine cloud brightening, we can draw the conclusion that as more marine cloud brightening aerosols are injected, the net solar radiation absorbed by Earth decreases, making the climate cooler.
+
+These trends are evident in the tables and graph created for analysis. Comparing the default model table to the descriptive statistics table for the marine cloud brightening models, we can see that the mean, median, and maximum net solar radiation absorbed by Earth for the marine cloud brightening models are all less than the net solar radiation absorbed by Earth for the default model. The table of marine cloud brightening model runs conveys the trend that decreasing cloud droplet radius is associated with decreasing net solar radiation absorbed by Earth.
+
+Additionally, the graph shows a logarithmic relationship between cloud droplet radius and net solar radiation absorbed by Earth. This relationship shows that the net solar radiation absorbed by Earth is relatively stable for cloud droplet radii of 7-10 micrometers. This means that the cloud droplet radius must be smaller than 7 micrometers for there to be a large enough effect of marine cloud brightening on the net solar radiation absorbed by Earth. This means that there is a minimum amount of marine cloud brightening aerosols that need to be injected (equivalent to a cloud droplet radius of less than 7 micrometers) to have a significant enough effect on cooling Earth's climate. This is important to consider for geoengineering policies that could regulate the extent of marine cloud brightening in the future.
+
+The outputs of the RRTM model limit the analyses that can be completed to evaluate the effect of marine cloud brightening on Earth's climate. It could be interesting to analyze how marine cloud brightening affects other climate variables, such as Earth's surface temperature and humidity. It would also be valuable to use another model that isn't the RRTM model to evaluate the effect of marine cloud brightening on the net solar radiation absorbed by Earth as a means to confirm the findings from this project.
+
+# Works Cited
+
+David Keith's Research Group. (n.d.). Marine Cloud Brightening. David Keith's Research Group. 
+      https://keith.seas.harvard.edu/marine-cloud-brightening
+  
+Zhao, M., Cao, L., Duan, L., Bala, G., & Caldeira, K. (2021). Climate more responsive to          marine cloud brightening than ocean albedo modification: A model study. Journal of            Geophysical Research: Atmospheres, 126,e2020JD033256.https://doi.org/10.1029/2020JD033256
